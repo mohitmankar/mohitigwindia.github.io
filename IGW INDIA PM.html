@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>IGW India PM Sheet</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: white;
+      text-align: center;
+      padding: 40px;
+    }
+    .section {
+      display: none;
+      max-width: 600px;
+      margin: auto;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 10px;
+      border-radius: 5px;
+      box-sizing: border-box;
+      border: 1px solid #000;
+    }
+    button {
+      background-color: #4da6ff;
+      color: white;
+      border: none;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+      text-align: left;
+    }
+    .error {
+      color: red;
+      margin-top: 10px;
+    }
+    table {
+      width: 95%;
+      margin: 30px auto;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #000;
+      padding: 10px;
+      text-align: center;
+    }
+    td.machine-info {
+      white-space: nowrap;
+      overflow: visible;
+      text-overflow: unset;
+    }
+    th {
+      font-weight: bold;
+      background: #ddd;
+    }
+    .green-row { background-color: #218838; color: white; }
+    .yellow-row { background-color: #ffc107; color: black; }
+    .red-row { background-color: #c82333; color: white; }
+    .top-left-btn {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 8px 15px;
+      font-size: 14px;
+      background: #007bff;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .top-left-btn:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Back Button -->
+  <a class="top-left-btn" onclick="goBack()">⬅ Back</a>
+
+  <!-- Page 1: Login -->
+  <div id="login" class="section">
+    <h2>Login - IGW India PM Sheet</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="handleLogin()">Login</button>
+    <div class="error" id="loginError"></div>
+  </div>
+
+  <!-- Page 2: PM Entry -->
+  <div id="entry" class="section">
+    <h2>PM Sheet Entry</h2>
+    <form id="pmForm">
+      <input type="text" id="department" placeholder="Department" required />
+      <input type="text" id="machineNo" placeholder="Machine No." required />
+      <label for="pmDate">PM Date</label>
+      <input type="date" id="pmDate" required />
+      <label for="expiryDate">Expiry Date</label>
+      <input type="date" id="expiryDate" required />
+      <input type="text" id="mentor" placeholder="Mentor" required />
+      <button type="submit">Submit</button>
+    </form>
+    <button onclick="location.hash = '#summary'">➡️ View PM Summary</button>
+  </div>
+
+  <!-- Page 3: Summary -->
+  <div id="summary" class="section">
+    <h2>All PM Sheet Entries</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>S.No</th>
+          <th>Department</th>
+          <th>Machine No.</th>
+          <th>PM Date</th>
+          <th>Expiry Date</th>
+          <th>Days Remaining</th>
+          <th>Mentor</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    let historyStack = [];
+
+    function showSection(hash) {
+      document.querySelectorAll('.section').forEach(sec => sec.style.display = 'none');
+      const section = document.querySelector(hash);
+      if (section) {
+        section.style.display = 'block';
+        historyStack.push(hash);
+        if (hash === '#summary') loadTable();
+      }
+    }
+
+    function goBack() {
+      if (historyStack.length > 1) {
+        historyStack.pop(); // current
+        const prev = historyStack.pop(); // previous
+        location.hash = prev;
+      }
+    }
+
+    window.addEventListener('hashchange', () => showSection(location.hash || '#login'));
+
+    window.onload = () => {
+      showSection(location.hash || '#login');
+      if ("Notification" in window) {
+        Notification.requestPermission();
+      }
+    };
+
+    function handleLogin() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const error = document.getElementById('loginError');
+      if (email === '9307009794@igwindia.com' && password === 'Igwindia@001') {
+        location.hash = '#entry';
+      } else {
+        error.textContent = email !== '9307009794@igwindia.com' ? 'Incorrect Username' : 'Incorrect Password';
+      }
+    }
+
+    document.getElementById("pmForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const newEntry = {
+        department: document.getElementById("department").value.trim(),
+        machineNo: document.getElementById("machineNo").value.trim(),
+        pmDate: document.getElementById("pmDate").value,
+        expiryDate: document.getElementById("expiryDate").value,
+        mentor: document.getElementById("mentor").value.trim()
+      };
+
+      let data = JSON.parse(localStorage.getItem("pmSheetData")) || [];
+
+      const index = data.findIndex(
+        (row) =>
+          row.machineNo === newEntry.machineNo &&
+          row.department === newEntry.department
+      );
+
+      if (index !== -1) {
+        data[index].pmDate = newEntry.pmDate;
+        data[index].expiryDate = newEntry.expiryDate;
+        data[index].mentor = newEntry.mentor;
+      } else {
+        data.push(newEntry);
+      }
+
+      localStorage.setItem("pmSheetData", JSON.stringify(data));
+      location.hash = "#summary";
+    });
+
+    function loadTable() {
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+      const data = JSON.parse(localStorage.getItem("pmSheetData")) || [];
+      const today = new Date();
+      let count = 0;
+
+      data.forEach((row, index) => {
+        const expiry = new Date(row.expiryDate);
+        const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+        let rowClass = "";
+        if (diffDays < 0) rowClass = "red-row";
+        else if (diffDays <= 2) rowClass = "yellow-row";
+        else rowClass = "green-row";
+
+        let daysText = "";
+        if (diffDays > 0) daysText = `${diffDays} days remaining`;
+        else if (diffDays === 0) daysText = "Expires today";
+        else daysText = `Expired ${Math.abs(diffDays)} days ago`;
+
+        const tr = document.createElement("tr");
+        tr.className = rowClass;
+        tr.innerHTML = `
+          <td>${++count}</td>
+          <td>${row.department}</td>
+          <td class="machine-info">${row.machineNo}</td>
+          <td class="machine-info">${row.pmDate}</td>
+          <td class="machine-info">${row.expiryDate}</td>
+          <td>${daysText}</td>
+          <td>${row.mentor}</td>
+          <td><button onclick="deleteRow(${index})" style="background:red;color:white;">Delete</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function deleteRow(index) {
+      let data = JSON.parse(localStorage.getItem("pmSheetData")) || [];
+      data.splice(index, 1);
+      localStorage.setItem("pmSheetData", JSON.stringify(data));
+      loadTable();
+    }
+
+    function checkAlarms() {
+      const data = JSON.parse(localStorage.getItem("pmSheetData")) || [];
+      const now = new Date();
+      const nowDate = now.toISOString().split("T")[0];
+      const nowHour = now.getHours();
+      if (nowHour !== 9) return;
+
+      data.forEach(row => {
+        const expiry = new Date(row.expiryDate);
+        const expiryDate = expiry.toISOString().split("T")[0];
+
+        const oneDayBefore = new Date(expiry);
+        oneDayBefore.setDate(expiry.getDate() - 1);
+        const oneDayBeforeDate = oneDayBefore.toISOString().split("T")[0];
+
+        if (nowDate === expiryDate) {
+          showNotification(`❗ Machine ${row.machineNo}`, `PM expires today (${row.expiryDate})`);
+        } else if (nowDate === oneDayBeforeDate) {
+          showNotification(`⚠️ Machine ${row.machineNo}`, `PM expires tomorrow (${row.expiryDate})`);
+        }
+      });
+    }
+
+    function showNotification(title, body) {
+      if (Notification.permission === "granted") {
+        new Notification(title, { body });
+      }
+    }
+
+    setInterval(checkAlarms, 60000); // Check every minute
+  </script>
+</body>
+</html>
